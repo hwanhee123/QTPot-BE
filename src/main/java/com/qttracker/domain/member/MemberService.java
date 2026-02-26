@@ -50,6 +50,8 @@ public class MemberService {
     public void changePassword(String email, PasswordChangeRequest req) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+        if (!passwordEncoder.matches(req.getCurrentPassword(), member.getPassword()))
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
         member.changePassword(passwordEncoder.encode(req.getNewPassword()));
     }
 

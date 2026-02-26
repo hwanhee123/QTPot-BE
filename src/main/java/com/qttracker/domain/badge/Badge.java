@@ -11,7 +11,9 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "badge")
+@Table(name = "badge", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"member_id", "month"})
+})
 public class Badge {
 
     @Id
@@ -34,5 +36,9 @@ public class Badge {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public void upgradeBadgeName(String newBadgeName) {
+        this.badgeName = newBadgeName;
     }
 }
