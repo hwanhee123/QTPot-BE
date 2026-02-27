@@ -54,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:5173", "http://3.35.27.209", "https://qtpot.kro.kr"));
+        cfg.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000", "http://3.35.27.209", "https://qtpot.kro.kr"));
         cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
