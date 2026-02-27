@@ -35,6 +35,14 @@ services:
     volumes:
       - app_logs:/app/logs
 
+  frontend:
+    build: ../qt-tracker-frontend
+    container_name: qttracker-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
+
 volumes:
   mysql_data:
   app_logs:
