@@ -13,8 +13,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 
 @Slf4j
@@ -41,29 +42,47 @@ public class S3Uploader {
 
     // ── 업로드
     public String upload(MultipartFile file, String folder) {
-        String key = folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+        // 파일 타입 검증 (Thumbnailator가 지원하는 포맷만 허용)
+        String contentType = file.getContentType();
+        if (contentType == null || !java.util.List.of(
+                "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp").contains(contentType)) {
+            throw new IllegalArgumentException("JPEG, PNG, GIF, WebP 형식만 업로드 가능합니다. (HEIC는 지원하지 않습니다)");
+        }
+        // 파일 크기 검증 (30MB 초과 거부)
+        if (file.getSize() > 30 * 1024 * 1024L) {
+            throw new IllegalArgumentException("이미지 크기는 30MB 이하여야 합니다.");
+        }
+
+        // 원본 파일명 제거 — UUID만 사용해 특수문자/한글 문제 방지
+        String key = folder + "/" + UUID.randomUUID() + ".jpg";
+        Path tempFile = null;
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            // ByteArrayOutputStream 대신 임시 파일로 처리 → 메모리 절약
+            tempFile = Files.createTempFile("upload-", ".jpg");
             Thumbnails.of(file.getInputStream())
                     .size(1280, 1280)
                     .keepAspectRatio(true)
                     .outputQuality(0.8)
                     .outputFormat("jpg")
-                    .toOutputStream(out);
-            byte[] compressed = out.toByteArray();
+                    .toFile(tempFile.toFile());
 
             s3Client.putObject(
                     PutObjectRequest.builder()
                             .bucket(bucket).key(key)
                             .contentType("image/jpeg")
-                            .contentLength((long) compressed.length)
                             .build(),
-                    RequestBody.fromInputStream(new ByteArrayInputStream(compressed), compressed.length));
-            return String.format("https://%s.s3.%s.amazonaws.com/%s",
-                    bucket, regionName, key);
+                    RequestBody.fromFile(tempFile));
+
+            return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, regionName, key);
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.error("S3 업로드 실패: {}", e.getMessage(), e);
             throw new RuntimeException("S3 업로드 실패: " + e.getMessage(), e);
+        } finally {
+            if (tempFile != null) {
+                try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
+            }
         }
     }
 

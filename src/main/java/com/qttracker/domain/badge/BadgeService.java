@@ -27,8 +27,10 @@ public class BadgeService {
     private static final Map<String, Integer> GRADE = Map.of("씨앗", 1, "새싹", 2, "꽃", 3);
 
     // 뱃지 등급 결정: 최고 등급 1개만 지급
-    private String determineBadgeName(long count) {
-        if (count >= 30) return "꽃";
+    // 2월은 해당 연도 실제 일수(28 or 29)를 꽃 뱃지 기준으로 사용
+    private String determineBadgeName(long count, YearMonth yearMonth) {
+        int flowerGoal = yearMonth.getMonthValue() == 2 ? yearMonth.lengthOfMonth() : 30;
+        if (count >= flowerGoal) return "꽃";
         if (count >= 20) return "새싹";
         if (count >= 10) return "씨앗";
         return null;
@@ -50,7 +52,7 @@ public class BadgeService {
         for (Member member : memberRepo.findAll()) {
             long count = attendanceRepo
                     .countByMemberAndCreatedDateBetween(member, start, end);
-            String badgeName = determineBadgeName(count);
+            String badgeName = determineBadgeName(count, last);
             if (badgeName == null) continue;
 
             badgeRepo.findByMemberAndMonth(member, monthStr).ifPresentOrElse(
@@ -85,7 +87,7 @@ public class BadgeService {
         LocalDate start = last.atDay(1);
         LocalDate end   = last.atEndOfMonth();
         long count = attendanceRepo.countByMemberAndCreatedDateBetween(member, start, end);
-        String badgeName = determineBadgeName(count);
+        String badgeName = determineBadgeName(count, last);
         if (badgeName != null) {
             badgeRepo.findByMemberAndMonth(member, monthStr).ifPresentOrElse(
                 existing -> {

@@ -50,12 +50,19 @@ public class AttendanceController {
         return ResponseEntity.noContent().build();
     }
 
-    // ── 홈 피드: 전체 최신 / 날짜별 필터
+    // ── 홈 피드: 날짜별 또는 월별 필터
     @GetMapping("/feed")
     public ResponseEntity<List<AttendanceResponse>> feed(
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(attendanceService.getFeed(date));
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        if (date != null) {
+            return ResponseEntity.ok(attendanceService.getFeed(date));
+        }
+        int y = (year  != null) ? year  : LocalDate.now().getYear();
+        int m = (month != null) ? month : LocalDate.now().getMonthValue();
+        return ResponseEntity.ok(attendanceService.getFeedByMonth(y, m));
     }
 
     // ── 내 월별 목록

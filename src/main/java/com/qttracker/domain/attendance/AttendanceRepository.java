@@ -28,6 +28,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     // 관리자: 월별 전체 목록
     List<Attendance> findByCreatedDateBetweenOrderByCreatedAtDesc(LocalDate start, LocalDate end);
 
+    // 피드: 월별 전체 (날짜 최신순, 같은 날은 업로드 최신순)
+    List<Attendance> findByCreatedDateBetweenOrderByCreatedDateDescCreatedAtDesc(LocalDate start, LocalDate end);
+
     // 전체 최신 피드 (홈 화면 기본)
     List<Attendance> findAllByOrderByCreatedAtDesc();
 

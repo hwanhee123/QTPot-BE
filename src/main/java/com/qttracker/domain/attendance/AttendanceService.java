@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,12 +45,20 @@ public class AttendanceService {
                         .build());
 
         // 사진 S3 업로드 후 AttendanceImage 저장
-        for (MultipartFile image : images) {
-            String url = s3Uploader.upload(image, "attendance");
-            imageRepo.save(AttendanceImage.builder()
-                    .attendance(attendance)
-                    .imageUrl(url)
-                    .build());
+        List<String> uploadedUrls = new ArrayList<>();
+        try {
+            for (MultipartFile image : images) {
+                String url = s3Uploader.upload(image, "attendance");
+                uploadedUrls.add(url);
+                imageRepo.save(AttendanceImage.builder()
+                        .attendance(attendance)
+                        .imageUrl(url)
+                        .build());
+            }
+        } catch (Exception e) {
+            // 중간 실패 시 이미 S3에 올라간 이미지 정리 (DB는 트랜잭션 롤백으로 처리)
+            uploadedUrls.forEach(url -> s3Uploader.deleteFile(url));
+            throw e;
         }
 
         // 이미지 포함해서 다시 조회 후 반환
@@ -101,12 +110,20 @@ public class AttendanceService {
                 find(email), ym.atDay(1), ym.atEndOfMonth());
     }
 
-    // ── 날짜별 전체 피드 (홈 화면 — null이면 전체 최신순)
+    // ── 날짜별 전체 피드 (특정 날짜)
     public List<AttendanceResponse> getFeed(LocalDate date) {
-        List<Attendance> list = (date == null)
-                ? attendanceRepo.findAllByOrderByCreatedAtDesc()
-                : attendanceRepo.findByCreatedDateOrderByCreatedAtDesc(date);
-        return list.stream()
+        return attendanceRepo.findByCreatedDateOrderByCreatedAtDesc(date)
+                .stream()
+                .map(a -> new AttendanceResponse(a, commentRepo.countByAttendance(a)))
+                .toList();
+    }
+
+    // ── 월별 전체 피드
+    public List<AttendanceResponse> getFeedByMonth(int year, int month) {
+        YearMonth ym = YearMonth.of(year, month);
+        return attendanceRepo
+                .findByCreatedDateBetweenOrderByCreatedDateDescCreatedAtDesc(ym.atDay(1), ym.atEndOfMonth())
+                .stream()
                 .map(a -> new AttendanceResponse(a, commentRepo.countByAttendance(a)))
                 .toList();
     }
