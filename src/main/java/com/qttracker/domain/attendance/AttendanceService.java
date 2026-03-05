@@ -23,6 +23,7 @@ public class AttendanceService {
     private final MemberRepository          memberRepo;
     private final S3Uploader                s3Uploader;
     private final CommentRepository         commentRepo;
+    private final AttendanceLikeRepository  likeRepo;
 
     // ── 다중 사진 업로드 (하루 1개 게시글, 사진 N장)
     @Transactional
@@ -96,11 +97,17 @@ public class AttendanceService {
 
     // ── 내 월별 인증 목록
     public List<AttendanceResponse> getMyMonthly(String email, int year, int month) {
+        Member member = find(email);
         YearMonth ym = YearMonth.of(year, month);
         return attendanceRepo
                 .findByMemberAndCreatedDateBetweenOrderByCreatedDateAsc(
-                        find(email), ym.atDay(1), ym.atEndOfMonth())
-                .stream().map(AttendanceResponse::new).toList();
+                        member, ym.atDay(1), ym.atEndOfMonth())
+                .stream()
+                .map(a -> new AttendanceResponse(a,
+                        commentRepo.countByAttendance(a),
+                        likeRepo.countByAttendance(a),
+                        likeRepo.findByAttendanceAndMember(a, member).isPresent()))
+                .toList();
     }
 
     // ── 내 월별 인증 횟수
@@ -111,20 +118,28 @@ public class AttendanceService {
     }
 
     // ── 날짜별 전체 피드 (특정 날짜)
-    public List<AttendanceResponse> getFeed(LocalDate date) {
+    public List<AttendanceResponse> getFeed(LocalDate date, String email) {
+        Member member = find(email);
         return attendanceRepo.findByCreatedDateOrderByCreatedAtDesc(date)
                 .stream()
-                .map(a -> new AttendanceResponse(a, commentRepo.countByAttendance(a)))
+                .map(a -> new AttendanceResponse(a,
+                        commentRepo.countByAttendance(a),
+                        likeRepo.countByAttendance(a),
+                        likeRepo.findByAttendanceAndMember(a, member).isPresent()))
                 .toList();
     }
 
     // ── 월별 전체 피드
-    public List<AttendanceResponse> getFeedByMonth(int year, int month) {
+    public List<AttendanceResponse> getFeedByMonth(int year, int month, String email) {
+        Member member = find(email);
         YearMonth ym = YearMonth.of(year, month);
         return attendanceRepo
                 .findByCreatedDateBetweenOrderByCreatedDateDescCreatedAtDesc(ym.atDay(1), ym.atEndOfMonth())
                 .stream()
-                .map(a -> new AttendanceResponse(a, commentRepo.countByAttendance(a)))
+                .map(a -> new AttendanceResponse(a,
+                        commentRepo.countByAttendance(a),
+                        likeRepo.countByAttendance(a),
+                        likeRepo.findByAttendanceAndMember(a, member).isPresent()))
                 .toList();
     }
 
@@ -155,7 +170,29 @@ public class AttendanceService {
 
     // ── 내 전체 인증 목록 (등록순)
     public List<AttendanceResponse> getMyAll(String email) {
-        return attendanceRepo.findByMemberOrderByCreatedAtDesc(find(email))
-                .stream().map(AttendanceResponse::new).toList();
+        Member member = find(email);
+        return attendanceRepo.findByMemberOrderByCreatedAtDesc(member)
+                .stream()
+                .map(a -> new AttendanceResponse(a,
+                        commentRepo.countByAttendance(a),
+                        likeRepo.countByAttendance(a),
+                        likeRepo.findByAttendanceAndMember(a, member).isPresent()))
+                .toList();
+    }
+
+    // ── 좋아요 토글
+    @Transactional
+    public LikeResponse toggleLike(String email, Long attendanceId) {
+        Member member = find(email);
+        Attendance attendance = attendanceRepo.findById(attendanceId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        likeRepo.findByAttendanceAndMember(attendance, member).ifPresentOrElse(
+                likeRepo::delete,
+                () -> likeRepo.save(AttendanceLike.builder()
+                        .attendance(attendance).member(member).build())
+        );
+        long count = likeRepo.countByAttendance(attendance);
+        boolean isLiked = likeRepo.findByAttendanceAndMember(attendance, member).isPresent();
+        return new LikeResponse(count, isLiked);
     }
 }

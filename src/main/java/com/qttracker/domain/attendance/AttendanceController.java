@@ -53,16 +53,26 @@ public class AttendanceController {
     // ── 홈 피드: 날짜별 또는 월별 필터
     @GetMapping("/feed")
     public ResponseEntity<List<AttendanceResponse>> feed(
+            @AuthenticationPrincipal UserDetails ud,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
+        String email = ud.getUsername();
         if (date != null) {
-            return ResponseEntity.ok(attendanceService.getFeed(date));
+            return ResponseEntity.ok(attendanceService.getFeed(date, email));
         }
         int y = (year  != null) ? year  : LocalDate.now().getYear();
         int m = (month != null) ? month : LocalDate.now().getMonthValue();
-        return ResponseEntity.ok(attendanceService.getFeedByMonth(y, m));
+        return ResponseEntity.ok(attendanceService.getFeedByMonth(y, m, email));
+    }
+
+    // ── 좋아요 토글
+    @PostMapping("/{id}/like")
+    public ResponseEntity<LikeResponse> toggleLike(
+            @AuthenticationPrincipal UserDetails ud,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(attendanceService.toggleLike(ud.getUsername(), id));
     }
 
     // ── 내 월별 목록

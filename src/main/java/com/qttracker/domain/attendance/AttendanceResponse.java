@@ -16,12 +16,19 @@ public class AttendanceResponse {
     private String       memberName;
     private String       memberEmail;
     private long         commentCount;
+    private long         likeCount;
+    @JsonProperty("isLiked")
+    private boolean      isLiked;
 
     public AttendanceResponse(Attendance a) {
         this(a, 0L);
     }
 
     public AttendanceResponse(Attendance a, long commentCount) {
+        this(a, commentCount, 0L, false);
+    }
+
+    public AttendanceResponse(Attendance a, long commentCount, long likeCount, boolean isLiked) {
         this.id           = a.getId();
         this.imageUrls    = a.getImages().stream()
                 .map(AttendanceImage::getImageUrl).toList();
@@ -31,5 +38,7 @@ public class AttendanceResponse {
         this.memberName   = a.getMember().getName();
         this.memberEmail  = a.getMember().getEmail();
         this.commentCount = commentCount;
+        this.likeCount    = likeCount;
+        this.isLiked      = isLiked;
     }
 }
