@@ -45,14 +45,20 @@ jobs:
           chmod 600 ~/.ssh/deploy_key.pem
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
+      - name: 서비스 중지
+        run: |
+          ssh -i ~/.ssh/deploy_key.pem \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "sudo systemctl stop qttracker && echo '서비스 중지 완료'"
+
       - name: JAR 파일 EC2로 전송
         run: |
           scp -i ~/.ssh/deploy_key.pem \
             build/libs/*-SNAPSHOT.jar \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ec2-user/qt-tracker-server.jar
 
-      - name: EC2 서비스 재시작
+      - name: 서비스 시작
         run: |
           ssh -i ~/.ssh/deploy_key.pem \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "sudo systemctl daemon-reload && sudo systemctl restart qttracker && echo '✅ 백엔드 배포 완료'"
+            "sudo systemctl daemon-reload && sudo systemctl start qttracker && echo '✅ 백엔드 배포 완료'"
