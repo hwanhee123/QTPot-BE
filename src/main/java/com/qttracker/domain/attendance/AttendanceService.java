@@ -11,12 +11,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final AttendanceRepository      attendanceRepo;
     private final AttendanceImageRepository imageRepo;
@@ -30,13 +33,12 @@ public class AttendanceService {
     public AttendanceResponse upload(
             String email, List<MultipartFile> images, String content, LocalDate date, boolean isPrivate) {
         Member member = find(email);
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = (date != null) ? date : LocalDate.now(KST);
         if (attendanceRepo.existsByMemberAndCreatedDate(member, targetDate))
             throw new IllegalStateException("해당 날짜에 이미 큐티 인증을 완료했습니다.");
         if (images == null || images.isEmpty())
             throw new IllegalArgumentException("사진을 최소 1장 선택해주세요.");
 
-        // 게시글 먼저 저장
         Attendance attendance = attendanceRepo.save(
                 Attendance.builder()
                         .member(member)
@@ -45,7 +47,6 @@ public class AttendanceService {
                         .createdDate(targetDate)
                         .build());
 
-        // 사진 S3 업로드 후 AttendanceImage 저장
         List<String> uploadedUrls = new ArrayList<>();
         try {
             for (MultipartFile image : images) {
@@ -57,12 +58,10 @@ public class AttendanceService {
                         .build());
             }
         } catch (Exception e) {
-            // 중간 실패 시 이미 S3에 올라간 이미지 정리 (DB는 트랜잭션 롤백으로 처리)
             uploadedUrls.forEach(url -> s3Uploader.deleteFile(url));
             throw e;
         }
 
-        // 이미지 포함해서 다시 조회 후 반환
         return new AttendanceResponse(
                 attendanceRepo.findById(attendance.getId()).orElseThrow());
     }
@@ -87,11 +86,8 @@ public class AttendanceService {
         if (!attendance.getMember().getEmail().equals(email))
             throw new IllegalStateException("본인의 게시글만 삭제할 수 있습니다.");
 
-        // 1. S3 이미지 먼저 삭제
         attendance.getImages()
                 .forEach(img -> s3Uploader.deleteFile(img.getImageUrl()));
-
-        // 2. DB 레코드 삭제 (CASCADE로 AttendanceImage도 함께)
         attendanceRepo.delete(attendance);
     }
 
@@ -155,12 +151,14 @@ public class AttendanceService {
         return memberRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자 없음"));
     }
+
     public long getMyTotalCount(String email) {
         return attendanceRepo.countByMemberAndCreatedDateBetween(
                 find(email),
                 LocalDate.of(2000, 1, 1),
-                LocalDate.now());
+                LocalDate.now(KST));
     }
+
     public long getMyYearCount(String email, int year) {
         LocalDate start = LocalDate.of(year, 1, 1);
         LocalDate end   = LocalDate.of(year, 12, 31);
