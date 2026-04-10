@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -20,16 +21,17 @@ public class QtNotiScheduler {
     private final FcmService fcmService;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    // 매 분마다 실행: 현재 시각(HH:mm)과 qtNotiTime이 일치하는 유저에게 FCM 발송
     @Scheduled(cron = "0 * * * * *")
     public void sendQtNotifications() {
-        String currentTime = LocalTime.now().format(FORMATTER);
+        // UTC 서버에서 KST 기준 현재 시각 계산
+        String currentTime = LocalTime.now(KST).format(FORMATTER);
         List<Member> targets = memberRepository.findByQtNotiTimeAndFcmTokenIsNotNull(currentTime);
 
         if (targets.isEmpty()) return;
 
-        log.info("큐티 알림 발송: {}시 대상 {}명", currentTime, targets.size());
+        log.info("큐티 알림 발송: {}시(KST) 대상 {}명", currentTime, targets.size());
 
         for (Member member : targets) {
             fcmService.sendPush(
