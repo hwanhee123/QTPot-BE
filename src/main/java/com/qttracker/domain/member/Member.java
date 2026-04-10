@@ -30,6 +30,15 @@ public class Member {
     @Column(name = "fcm_token")
     private String fcmToken;
 
+    // 댓글 알림 켜기/끄기 (기본값 true)
+    @Column(name = "comment_noti_enabled", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean commentNotiEnabled = true;
+
+    // 큐티 알림 시간 (HH:mm 형식, null이면 알림 안 보냄)
+    @Column(name = "qt_noti_time", length = 5)
+    private String qtNotiTime;
+
     @PrePersist
     public void prePersist() { this.createdAt = LocalDateTime.now(); }
 
@@ -37,9 +46,13 @@ public class Member {
         this.fcmToken = fcmToken;
     }
 
-    // 비밀번호 변경용 (관리자 초기화, 본인 변경 모두 사용)
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void updateNotificationSettings(boolean commentNotiEnabled, String qtNotiTime) {
+        this.commentNotiEnabled = commentNotiEnabled;
+        this.qtNotiTime = qtNotiTime;
     }
 
     public enum Role { USER, LEADER, ADMIN }

@@ -41,7 +41,11 @@ public class CommentService {
                 .build());
 
         Member postOwner = attendance.getMember();
-        if (!postOwner.getEmail().equals(email)) {
+        boolean isOwnPost = postOwner.getEmail().equals(email);
+        boolean hasToken  = postOwner.getFcmToken() != null;
+        boolean notiOn    = postOwner.isCommentNotiEnabled();
+
+        if (!isOwnPost && hasToken && notiOn) {
             fcmService.sendPush(
                     postOwner.getFcmToken(),
                     member.getName() + "님이 댓글을 달았습니다.",

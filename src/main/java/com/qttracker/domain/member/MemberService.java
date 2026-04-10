@@ -36,7 +36,6 @@ public class MemberService {
                 member.getRole().name(), member.getEmail());
     }
 
-    // ── 비밀번호 찾기: 이메일 + 이름 확인 후 새 비밀번호로 즉시 변경
     @Transactional
     public void resetPassword(PasswordResetRequest req) {
         Member member = memberRepository
@@ -45,7 +44,6 @@ public class MemberService {
         member.changePassword(passwordEncoder.encode(req.getNewPassword()));
     }
 
-    // ── 마이페이지 비밀번호 변경 (로그인된 본인만)
     @Transactional
     public void changePassword(String email, PasswordChangeRequest req) {
         Member member = memberRepository.findByEmail(email)
@@ -55,7 +53,6 @@ public class MemberService {
         member.changePassword(passwordEncoder.encode(req.getNewPassword()));
     }
 
-    // ── FCM 토큰 저장
     @Transactional
     public void updateFcmToken(String email, String fcmToken) {
         Member member = memberRepository.findByEmail(email)
@@ -63,7 +60,6 @@ public class MemberService {
         member.updateFcmToken(fcmToken);
     }
 
-    // ── FCM 토큰 삭제 (알림 끄기)
     @Transactional
     public void clearFcmToken(String email) {
         Member member = memberRepository.findByEmail(email)
@@ -71,7 +67,34 @@ public class MemberService {
         member.updateFcmToken(null);
     }
 
-    // ── 관리자: 특정 멤버 비밀번호를 123456789로 초기화
+    // ── 알림 설정 조회
+    public NotificationSettingResponse getNotificationSettings(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+        return new NotificationSettingResponse(
+                member.isCommentNotiEnabled(),
+                member.getQtNotiTime()
+        );
+    }
+
+    // ── 알림 설정 저장
+    @Transactional
+    public void updateNotificationSettings(String email, NotificationSettingRequest req) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+
+        // qtNotiTime 형식 검증 (HH:mm 또는 null)
+        String time = req.getQtNotiTime();
+        if (time != null && !time.isBlank()) {
+            if (!time.matches("^([01]\\d|2[0-3]):[0-5]\\d$"))
+                throw new IllegalArgumentException("시간 형식이 올바르지 않습니다. (HH:mm)");
+        } else {
+            time = null;
+        }
+
+        member.updateNotificationSettings(req.isCommentNotiEnabled(), time);
+    }
+
     @Transactional
     public void resetPasswordByAdmin(Long memberId) {
         Member member = memberRepository.findById(memberId)
