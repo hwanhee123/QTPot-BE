@@ -1,18 +1,27 @@
 package com.qttracker.domain.member;
 
 import com.qttracker.security.JwtTokenProvider;
+import com.qttracker.security.RevokedToken;
+import com.qttracker.security.RevokedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 @Service
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final MemberRepository memberRepository;
-    private final PasswordEncoder  passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+    // 관리자 초기화 시 부여하는 고정 임시 비밀번호 (다음 로그인 시 변경 강제)
+    private static final String TEMP_PASSWORD = "123456789";
+
+    private final MemberRepository        memberRepository;
+    private final PasswordEncoder         passwordEncoder;
+    private final JwtTokenProvider        jwtTokenProvider;
+    private final RevokedTokenRepository  revokedTokenRepository;
 
     @Transactional
     public void signup(SignupRequest req) {
@@ -33,15 +42,7 @@ public class MemberService {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         String token = jwtTokenProvider.createToken(member.getEmail(), member.getRole().name());
         return new LoginResponse(token, member.getName(),
-                member.getRole().name(), member.getEmail());
-    }
-
-    @Transactional
-    public void resetPassword(PasswordResetRequest req) {
-        Member member = memberRepository
-                .findByEmailAndName(req.getEmail(), req.getName())
-                .orElseThrow(() -> new IllegalArgumentException("일치하는 계정을 찾을 수 없습니다."));
-        member.changePassword(passwordEncoder.encode(req.getNewPassword()));
+                member.getRole().name(), member.getEmail(), member.isMustChangePassword());
     }
 
     @Transactional
@@ -99,6 +100,17 @@ public class MemberService {
     public void resetPasswordByAdmin(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("멤버를 찾을 수 없습니다."));
-        member.changePassword(passwordEncoder.encode("123456789"));
+        member.resetToTempPassword(passwordEncoder.encode(TEMP_PASSWORD));
+    }
+
+    // 현재 토큰을 블랙리스트에 등록해 만료 전이라도 재사용을 막는다.
+    @Transactional
+    public void logout(String token) {
+        String jti = jwtTokenProvider.getJti(token);
+        if (jti == null || revokedTokenRepository.existsByJti(jti)) return;
+        LocalDateTime expiresAt = jwtTokenProvider.getExpiration(token)
+                .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        revokedTokenRepository.save(RevokedToken.builder()
+                .jti(jti).expiresAt(expiresAt).build());
     }
 }

@@ -39,6 +39,11 @@ public class Member {
     @Column(name = "qt_noti_time", length = 5)
     private String qtNotiTime;
 
+    // 관리자가 초기화한 임시 비밀번호를 그대로 쓰고 있는 상태 (다음 로그인 시 변경 강제)
+    @Column(name = "must_change_password", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     @PrePersist
     public void prePersist() { this.createdAt = LocalDateTime.now(); }
 
@@ -48,6 +53,13 @@ public class Member {
 
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
+        this.mustChangePassword = false;
+    }
+
+    // 관리자 초기화: 임시 비밀번호 지정 + 다음 로그인 시 변경 강제
+    public void resetToTempPassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.mustChangePassword = true;
     }
 
     public void updateNotificationSettings(boolean commentNotiEnabled, String qtNotiTime) {

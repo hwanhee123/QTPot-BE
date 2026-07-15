@@ -113,10 +113,10 @@ public class AttendanceService {
                 find(email), ym.atDay(1), ym.atEndOfMonth());
     }
 
-    // ── 날짜별 전체 피드 (특정 날짜)
+    // ── 날짜별 전체 피드 (특정 날짜, 비공개는 작성자 본인에게만 노출)
     public List<AttendanceResponse> getFeed(LocalDate date, String email) {
         Member member = find(email);
-        return attendanceRepo.findByCreatedDateOrderByCreatedAtDesc(date)
+        return attendanceRepo.findFeedByDate(date, member)
                 .stream()
                 .map(a -> new AttendanceResponse(a,
                         commentRepo.countByAttendance(a),
@@ -125,12 +125,12 @@ public class AttendanceService {
                 .toList();
     }
 
-    // ── 월별 전체 피드
+    // ── 월별 전체 피드 (비공개는 작성자 본인에게만 노출)
     public List<AttendanceResponse> getFeedByMonth(int year, int month, String email) {
         Member member = find(email);
         YearMonth ym = YearMonth.of(year, month);
         return attendanceRepo
-                .findByCreatedDateBetweenOrderByCreatedDateDescCreatedAtDesc(ym.atDay(1), ym.atEndOfMonth())
+                .findFeedByMonth(ym.atDay(1), ym.atEndOfMonth(), member)
                 .stream()
                 .map(a -> new AttendanceResponse(a,
                         commentRepo.countByAttendance(a),
@@ -184,6 +184,8 @@ public class AttendanceService {
         Member member = find(email);
         Attendance attendance = attendanceRepo.findById(attendanceId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (attendance.isPrivate() && !attendance.getMember().getEmail().equals(email))
+            throw new IllegalStateException("비공개 게시글입니다.");
         likeRepo.findByAttendanceAndMember(attendance, member).ifPresentOrElse(
                 likeRepo::delete,
                 () -> likeRepo.save(AttendanceLike.builder()

@@ -18,8 +18,9 @@ public class CommentController {
     // ── 댓글 목록 조회
     @GetMapping
     public ResponseEntity<List<CommentResponse>> getComments(
+            @AuthenticationPrincipal UserDetails ud,
             @PathVariable Long attendanceId) {
-        return ResponseEntity.ok(commentService.getComments(attendanceId));
+        return ResponseEntity.ok(commentService.getComments(ud.getUsername(), attendanceId));
     }
 
     // ── 댓글 작성

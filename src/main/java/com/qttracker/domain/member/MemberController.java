@@ -1,5 +1,6 @@
 package com.qttracker.domain.member;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,11 +26,13 @@ public class MemberController {
         return ResponseEntity.ok(memberService.login(req));
     }
 
-    @PostMapping("/api/auth/reset-password")
-    public ResponseEntity<String> resetPassword(
-            @Valid @RequestBody PasswordResetRequest req) {
-        memberService.resetPassword(req);
-        return ResponseEntity.ok("비밀번호가 변경되었습니다.");
+    @PostMapping("/api/auth/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            memberService.logout(header.substring(7));
+        }
+        return ResponseEntity.ok("로그아웃되었습니다.");
     }
 
     @PutMapping("/api/members/me/password")

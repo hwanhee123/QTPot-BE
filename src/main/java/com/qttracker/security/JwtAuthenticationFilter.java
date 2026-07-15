@@ -16,8 +16,9 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider  jwtTokenProvider;
-    private final UserDetailsService userDetailsService;
+    private final JwtTokenProvider        jwtTokenProvider;
+    private final UserDetailsService      userDetailsService;
+    private final RevokedTokenRepository  revokedTokenRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest  req,
@@ -26,7 +27,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = resolve(req);
-        if (token != null && jwtTokenProvider.validateToken(token)) {
+        if (token != null && jwtTokenProvider.validateToken(token)
+                && !revokedTokenRepository.existsByJti(jwtTokenProvider.getJti(token))) {
             try {
                 UserDetails user = userDetailsService
                         .loadUserByUsername(jwtTokenProvider.getEmail(token));

@@ -3,6 +3,7 @@ package com.qttracker.config;
 import com.qttracker.security.CustomUserDetailsService;
 import com.qttracker.security.JwtAuthenticationFilter;
 import com.qttracker.security.JwtTokenProvider;
+import com.qttracker.security.RevokedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtTokenProvider        jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final RevokedTokenRepository  revokedTokenRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -35,13 +37,14 @@ public class SecurityConfig {
                 .sessionManagement(s ->
                         s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()       // 회원가입, 로그인, 비번찾기
+                        .requestMatchers("/api/auth/logout").authenticated()
+                        .requestMatchers("/api/auth/**").permitAll()       // 회원가입, 로그인
                         .requestMatchers("/api/attendance/all").hasRole("LEADER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN") // 관리자 전용
                         .anyRequest().authenticated())
 
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),
+                        new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService, revokedTokenRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

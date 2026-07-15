@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -23,6 +24,7 @@ public class JwtTokenProvider {
 
     public String createToken(String email, String role) {
         return Jwts.builder()
+                .setId(UUID.randomUUID().toString())
                 .setSubject(email)
                 .claim("role", role)
                 .setIssuedAt(new Date())
@@ -33,6 +35,15 @@ public class JwtTokenProvider {
 
     public String getEmail(String token) {
         return claims(token).getSubject();
+    }
+
+    // 로그아웃 시 블랙리스트에 저장할 토큰 식별자
+    public String getJti(String token) {
+        return claims(token).getId();
+    }
+
+    public Date getExpiration(String token) {
+        return claims(token).getExpiration();
     }
 
     public boolean validateToken(String token) {

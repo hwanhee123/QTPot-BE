@@ -19,9 +19,11 @@ public class CommentService {
     private final MemberRepository     memberRepo;
     private final FcmService           fcmService;
 
-    public List<CommentResponse> getComments(Long attendanceId) {
+    public List<CommentResponse> getComments(String email, Long attendanceId) {
         Attendance attendance = attendanceRepo.findById(attendanceId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (attendance.isPrivate() && !attendance.getMember().getEmail().equals(email))
+            throw new IllegalStateException("비공개 게시글입니다.");
         return commentRepo.findByAttendanceOrderByCreatedAtAsc(attendance)
                 .stream().map(CommentResponse::new).toList();
     }
@@ -34,6 +36,8 @@ public class CommentService {
                 .orElseThrow(() -> new UsernameNotFoundException("사용자 없음"));
         Attendance attendance = attendanceRepo.findById(attendanceId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (attendance.isPrivate() && !attendance.getMember().getEmail().equals(email))
+            throw new IllegalStateException("비공개 게시글입니다.");
         Comment comment = commentRepo.save(Comment.builder()
                 .attendance(attendance)
                 .member(member)
