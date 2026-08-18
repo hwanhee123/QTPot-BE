@@ -1,5 +1,6 @@
 package com.qttracker.domain.attendance;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,7 @@ public class AttendanceController {
     public ResponseEntity<AttendanceResponse> updateContent(
             @AuthenticationPrincipal UserDetails ud,
             @PathVariable Long id,
-            @RequestBody ContentUpdateRequest req) {
+            @Valid @RequestBody ContentUpdateRequest req) {
         return ResponseEntity.ok(
                 attendanceService.updateContent(ud.getUsername(), id, req));
     }

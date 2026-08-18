@@ -3,6 +3,7 @@ package com.qttracker.config;
 import com.qttracker.security.CustomUserDetailsService;
 import com.qttracker.security.JwtAuthenticationFilter;
 import com.qttracker.security.JwtTokenProvider;
+import com.qttracker.security.RateLimitFilter;
 import com.qttracker.security.RevokedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +47,7 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService, revokedTokenRepository),
                         UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new RateLimitFilter(), JwtAuthenticationFilter.class)
                 .build();
     }
 

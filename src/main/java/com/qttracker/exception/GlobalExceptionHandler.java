@@ -1,6 +1,7 @@
 package com.qttracker.exception;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -15,6 +16,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String,String>> bad(IllegalArgumentException e) {
         return ResponseEntity.badRequest()
                 .body(Map.of("message", e.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String,String>> invalid(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(err -> err.getDefaultMessage())
+                .orElse("입력값이 올바르지 않습니다.");
+        return ResponseEntity.badRequest()
+                .body(Map.of("message", message));
     }
 
     @ExceptionHandler(IllegalStateException.class)

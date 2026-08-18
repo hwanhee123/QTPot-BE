@@ -1,5 +1,6 @@
 package com.qttracker.domain.attendance;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,7 +29,7 @@ public class CommentController {
     public ResponseEntity<CommentResponse> addComment(
             @AuthenticationPrincipal UserDetails ud,
             @PathVariable Long attendanceId,
-            @RequestBody CommentRequest req) {
+            @Valid @RequestBody CommentRequest req) {
         return ResponseEntity.ok(
                 commentService.addComment(ud.getUsername(), attendanceId, req));
     }
