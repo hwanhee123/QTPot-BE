@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface AttendanceLikeRepository extends JpaRepository<AttendanceLike, Long> {
     Optional<AttendanceLike> findByAttendanceAndMember(Attendance attendance, Member member);
     long countByAttendance(Attendance attendance);
+    void deleteByAttendance(Attendance attendance);
 }

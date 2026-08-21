@@ -86,6 +86,9 @@ public class AttendanceService {
         if (!attendance.getMember().getEmail().equals(email))
             throw new IllegalStateException("본인의 게시글만 삭제할 수 있습니다.");
 
+        // 댓글/좋아요는 Attendance에 cascade 매핑이 없어 FK 제약으로 먼저 지워야 함
+        commentRepo.deleteByAttendance(attendance);
+        likeRepo.deleteByAttendance(attendance);
         attendance.getImages()
                 .forEach(img -> s3Uploader.deleteFile(img.getImageUrl()));
         attendanceRepo.delete(attendance);
