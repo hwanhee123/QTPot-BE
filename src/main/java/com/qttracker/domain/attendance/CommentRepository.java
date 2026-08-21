@@ -7,4 +7,5 @@ import java.util.List;
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByAttendanceOrderByCreatedAtAsc(Attendance attendance);
     long countByAttendance(Attendance attendance);
+    void deleteByAttendance(Attendance attendance);
 }
