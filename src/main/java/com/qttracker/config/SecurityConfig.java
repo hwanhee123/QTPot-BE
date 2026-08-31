@@ -48,9 +48,9 @@ public class SecurityConfig {
                 // accessDeniedHandler도 같이 명시해 403이 유지되도록 함.
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) ->
-                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                                writeJsonError(res, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다."))
                         .accessDeniedHandler((req, res, ex) ->
-                                res.sendError(HttpServletResponse.SC_FORBIDDEN)))
+                                writeJsonError(res, HttpServletResponse.SC_FORBIDDEN, "접근 권한이 없습니다.")))
                 .authorizeHttpRequests(auth -> auth
                         // sendError()가 /error로 forward하는데, 이게 보안 필터를 다시 타면
                         // OncePerRequestFilter인 JwtAuthenticationFilter는 error dispatch에서
@@ -67,6 +67,14 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new RateLimitFilter(), JwtAuthenticationFilter.class)
                 .build();
+    }
+
+    // GlobalExceptionHandler와 동일한 {"message": "..."} 형식 — 이 필터 체인 레벨 에러는
+    // @RestControllerAdvice를 안 타서 여기서 직접 맞춰줘야 FE 응답 형식이 일관됨
+    private void writeJsonError(HttpServletResponse res, int status, String message) throws java.io.IOException {
+        res.setStatus(status);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("{\"message\":\"" + message + "\"}");
     }
 
     @Bean
